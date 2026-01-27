@@ -2265,6 +2265,44 @@
             container.innerHTML = html;
         }
 
+        // 自动调整Excel列宽的辅助函数
+        function autoFitColumns(worksheet) {
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            const colWidths = [];
+            
+            // 遍历每一列
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                let maxWidth = 10; // 最小宽度
+                
+                // 遍历该列的所有行
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                    const cell = worksheet[cellAddress];
+                    
+                    if (cell && cell.v) {
+                        const cellValue = cell.v.toString();
+                        // 计算字符宽度（中文字符算2个宽度，英文算1个）
+                        let width = 0;
+                        for (let i = 0; i < cellValue.length; i++) {
+                            const charCode = cellValue.charCodeAt(i);
+                            // 中文字符范围
+                            if (charCode >= 0x4e00 && charCode <= 0x9fa5) {
+                                width += 2.2; // 中文字符
+                            } else {
+                                width += 1.1; // 英文、数字等
+                            }
+                        }
+                        maxWidth = Math.max(maxWidth, width);
+                    }
+                }
+                
+                // 设置列宽，最大不超过50
+                colWidths.push({ wch: Math.min(maxWidth, 50) });
+            }
+            
+            worksheet['!cols'] = colWidths;
+        }
+
         function exportExcel() {
             if (!records.length) return alert('暂无数据');
             
@@ -2295,6 +2333,7 @@
                     备注: r.notes,
                     登记时间: r.recordTime
                 })));
+                autoFitColumns(ws1); // 自动调整列宽
                 XLSX.utils.book_append_sheet(wb, ws1, '在职人员');
             }
             
@@ -2325,6 +2364,7 @@
                     备注: r.notes,
                     登记时间: r.recordTime
                 })));
+                autoFitColumns(ws2); // 自动调整列宽
                 XLSX.utils.book_append_sheet(wb, ws2, '退宿人员');
             }
             
@@ -2378,6 +2418,7 @@
                 登记时间: r.recordTime
             })));
             
+            autoFitColumns(ws); // 自动调整列宽
             XLSX.utils.book_append_sheet(wb, ws, '退宿人员');
             XLSX.writeFile(wb, '退宿人员登记表_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
@@ -2908,6 +2949,7 @@
                 备注: r.notes || ''
             })));
             
+            autoFitColumns(ws); // 自动调整列宽
             XLSX.utils.book_append_sheet(wb, ws, '房间配置');
             XLSX.writeFile(wb, '房间配置_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
