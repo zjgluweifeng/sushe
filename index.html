@@ -617,14 +617,16 @@
         };
 
         function checkFirstTimeUse() {
-            const isInitialized = localStorage.getItem('systemInitialized');
-            const hasUsers = localStorage.getItem('users');
+            // 检查users对象中是否有任何用户（从云端或本地加载的）
+            const hasUsers = Object.keys(users).length > 0;
             
-            // 只有在本地没有初始化标记，且没有用户数据时才需要设置密码
-            // 但不显示提醒，而是在登录时直接弹出设置界面
-            if (!isInitialized && !hasUsers) {
+            // 只有在users对象为空（云端和本地都没有用户数据）时才需要设置密码
+            if (!hasUsers) {
+                // 显示设置界面让用户初始化系统
+                openModal('setupModal');
                 return true;
             }
+            // 如果有用户数据（从云端或本地加载），直接返回false，不显示设置界面
             return false;
         }
 
@@ -697,15 +699,8 @@
                 return;
             }
             
+            // 获取已保存的用户，如果没有则使用默认用户
             const savedUsers = JSON.parse(localStorage.getItem('users') || JSON.stringify(defaultUsers));
-            
-            // 检查是否首次使用（没有用户数据）
-            const hasUsers = localStorage.getItem('users');
-            if (!hasUsers || Object.keys(savedUsers).length === 0) {
-                alert('检测到首次使用，请先设置管理员密码');
-                showInitialSetup();
-                return;
-            }
             
             if (savedUsers[username] && savedUsers[username].password === password) {
                 currentUser = {
