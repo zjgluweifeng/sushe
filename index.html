@@ -432,7 +432,7 @@
                         <textarea id="notes" rows="3"></textarea>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-info">💾 确定保存</button>
+                <button type="submit" class="btn btn-info" id="submitBtn">💾 确定保存</button>
                 <button type="button" class="btn btn-warning hidden" id="cancelBtn" onclick="cancelEdit()">取消编辑</button>
             </form>
         </div>
@@ -958,9 +958,13 @@
                 roleElement.className = 'user-role' + (currentUser.role === 'viewer' ? ' viewer' : '');
             }
             
-            // 确保显示默认标签页（人员登记）
-            console.log('→ Calling switchTab(register)...');
-            switchTab('register');
+            // 根据用户角色显示默认标签页
+            console.log('→ Calling switchTab...');
+            if (currentUser.role === 'viewer') {
+                switchTab('list'); // viewer默认显示人员列表
+            } else {
+                switchTab('register'); // admin默认显示人员登记
+            }
             
             updateUIPermissions();
             loadData();
@@ -972,6 +976,14 @@
             if (!currentUser) return; // 如果没有当前用户，直接返回
             
             const isAdmin = currentUser.role === 'admin';
+            
+            // 控制人员登记标签的显示
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                if (tab.textContent.includes('人员登记') && !isAdmin) {
+                    tab.style.display = 'none';
+                }
+            });
             
             // 控制人员登记表单
             const registerForm = document.getElementById('registerForm');
@@ -1479,7 +1491,29 @@
         function updateBatchActions() {
             const count = selectedIds.size;
             document.getElementById('selectedCount').textContent = count;
-            document.getElementById('batchActions').style.display = count > 0 ? 'flex' : 'none';
+            
+            // 根据用户角色显示批量操作按钮
+            const batchActionsDiv = document.getElementById('batchActions');
+            if (count > 0) {
+                batchActionsDiv.style.display = 'flex';
+                // 如果是viewer，隐藏批量退宿和批量删除按钮
+                if (currentUser.role === 'viewer') {
+                    batchActionsDiv.innerHTML = `
+                        <span class="selected-count">已选择 <span id="selectedCount">${count}</span> 条</span>
+                        <button class="btn btn-secondary" onclick="clearSelection()">取消选择</button>
+                        <span style="color:#999;margin-left:10px;">仅查看权限</span>
+                    `;
+                } else {
+                    batchActionsDiv.innerHTML = `
+                        <span class="selected-count">已选择 <span id="selectedCount">${count}</span> 条</span>
+                        <button class="btn btn-warning" onclick="batchCheckout()">🚪 批量退宿</button>
+                        <button class="btn btn-danger" onclick="batchDelete()">🗑️ 批量删除</button>
+                        <button class="btn btn-secondary" onclick="clearSelection()">取消选择</button>
+                    `;
+                }
+            } else {
+                batchActionsDiv.style.display = 'none';
+            }
             
             const activeRecords = records.filter(r => !r.checkOutDate);
             const search = document.getElementById('search').value.toLowerCase();
@@ -1510,6 +1544,12 @@
         }
 
         function batchDelete() {
+            // 检查viewer权限
+            if (currentUser.role === 'viewer') {
+                alert('您没有权限批量删除记录');
+                return;
+            }
+            
             if (selectedIds.size === 0) return;
             
             if (confirm(`确定删除选中的 ${selectedIds.size} 条记录吗?删除后无法恢复!`)) {
@@ -1523,6 +1563,12 @@
         }
 
         function batchCheckout() {
+            // 检查viewer权限
+            if (currentUser.role === 'viewer') {
+                alert('您没有权限批量退宿');
+                return;
+            }
+            
             if (selectedIds.size === 0) return;
             
             document.getElementById('batchCheckoutCount').textContent = selectedIds.size;
@@ -1592,7 +1638,28 @@
         function updateBatchActionsCheckout() {
             const count = selectedCheckoutIds.size;
             document.getElementById('selectedCountCheckout').textContent = count;
-            document.getElementById('batchActionsCheckout').style.display = count > 0 ? 'flex' : 'none';
+            
+            // 根据用户角色显示批量操作按钮
+            const batchActionsDiv = document.getElementById('batchActionsCheckout');
+            if (count > 0) {
+                batchActionsDiv.style.display = 'flex';
+                // 如果是viewer，隐藏批量删除按钮
+                if (currentUser.role === 'viewer') {
+                    batchActionsDiv.innerHTML = `
+                        <span class="selected-count">已选择 <span id="selectedCountCheckout">${count}</span> 条</span>
+                        <button class="btn btn-secondary" onclick="clearSelectionCheckout()">取消选择</button>
+                        <span style="color:#999;margin-left:10px;">仅查看权限</span>
+                    `;
+                } else {
+                    batchActionsDiv.innerHTML = `
+                        <span class="selected-count">已选择 <span id="selectedCountCheckout">${count}</span> 条</span>
+                        <button class="btn btn-danger" onclick="batchDeleteCheckout()">🗑️ 批量删除</button>
+                        <button class="btn btn-secondary" onclick="clearSelectionCheckout()">取消选择</button>
+                    `;
+                }
+            } else {
+                batchActionsDiv.style.display = 'none';
+            }
             
             const checkoutRecords = records.filter(r => r.checkOutDate);
             const search = document.getElementById('searchCheckout').value.toLowerCase();
@@ -1613,6 +1680,12 @@
         }
 
         function batchDeleteCheckout() {
+            // 检查viewer权限
+            if (currentUser.role === 'viewer') {
+                alert('您没有权限批量删除退宿人员');
+                return;
+            }
+            
             if (selectedCheckoutIds.size === 0) return;
             
             if (confirm(`确定删除选中的 ${selectedCheckoutIds.size} 条退宿记录吗?删除后无法恢复!`)) {
@@ -1785,6 +1858,11 @@
             document.getElementById('cancelBtn').classList.add('hidden');
             document.getElementById('formTitle').textContent = '新增人员登记';
             editingId = null;
+            
+            // 恢复表单字段的启用状态和提交按钮显示
+            const formInputs = document.querySelectorAll('#registerForm input, #registerForm select, #registerForm textarea');
+            formInputs.forEach(input => input.disabled = false);
+            document.getElementById('submitBtn').style.display = 'inline-block';
         }
 
         function renderTable() {
@@ -1823,9 +1901,14 @@
                     <td>${r.building || '-'}-${r.room || '-'}-${r.bed || '-'}</td>
                     <td>${r.checkInDate || '-'}</td>
                     <td>
-                        <button class="btn btn-info" onclick="editRecord(${r.id})">编辑</button>
-                        <button class="btn btn-warning" onclick="checkout(${r.id})">退宿</button>
-                        <button class="btn btn-danger" onclick="deleteRecord(${r.id})">删除</button>
+                        ${currentUser.role === 'admin' ? `
+                            <button class="btn btn-info" onclick="editRecord(${r.id})">编辑</button>
+                            <button class="btn btn-warning" onclick="checkout(${r.id})">退宿</button>
+                            <button class="btn btn-danger" onclick="deleteRecord(${r.id})">删除</button>
+                        ` : `
+                            <button class="btn btn-info" onclick="editRecord(${r.id})">查看</button>
+                            <span style="color:#999;font-size:12px;">仅查看权限</span>
+                        `}
                     </td>
                 </tr>
             `).join('') || '<tr><td colspan="10" style="text-align:center;padding:30px;color:#999;">暂无在住人员</td></tr>';
@@ -1929,7 +2012,11 @@
                     <td>${r.checkOutReason || '-'}</td>
                     <td>
                         <button class="btn btn-info" onclick="editRecord(${r.id})">查看</button>
-                        <button class="btn btn-danger" onclick="deleteRecord(${r.id})">删除</button>
+                        ${currentUser.role === 'admin' ? `
+                            <button class="btn btn-danger" onclick="deleteRecord(${r.id})">删除</button>
+                        ` : `
+                            <span style="color:#999;font-size:12px;">仅查看权限</span>
+                        `}
                     </td>
                 </tr>
             `).join('') || '<tr><td colspan="13" style="text-align:center;padding:30px;color:#999;">暂无退宿人员</td></tr>';
@@ -1963,7 +2050,23 @@
                 }
             }
             
-            document.getElementById('formTitle').textContent = '编辑人员信息';
+            // 根据用户角色设置标题和表单状态
+            if (currentUser.role === 'viewer') {
+                document.getElementById('formTitle').textContent = '查看人员信息（只读）';
+                // 禁用所有表单字段
+                const formInputs = document.querySelectorAll('#personForm input, #personForm select, #personForm textarea');
+                formInputs.forEach(input => input.disabled = true);
+                // 隐藏提交按钮
+                document.getElementById('submitBtn').style.display = 'none';
+            } else {
+                document.getElementById('formTitle').textContent = '编辑人员信息';
+                // 启用所有表单字段
+                const formInputs = document.querySelectorAll('#personForm input, #personForm select, #personForm textarea');
+                formInputs.forEach(input => input.disabled = false);
+                // 显示提交按钮
+                document.getElementById('submitBtn').style.display = 'inline-block';
+            }
+            
             document.getElementById('cancelBtn').classList.remove('hidden');
             switchTab('register');
         }
@@ -2015,6 +2118,12 @@
         }
 
         function deleteRecord(id) {
+            // 检查viewer权限
+            if (currentUser.role === 'viewer') {
+                alert('您没有权限删除记录');
+                return;
+            }
+            
             if (confirm('确定删除该记录吗?删除后无法恢复!')) {
                 records = records.filter(r => r.id !== id);
                 localStorage.setItem('dormRecords', JSON.stringify(records));
@@ -2025,6 +2134,12 @@
         }
 
         function checkout(id) {
+            // 检查viewer权限
+            if (currentUser.role === 'viewer') {
+                alert('您没有权限操作退宿');
+                return;
+            }
+            
             const reason = prompt('请输入退宿原因:');
             if (reason) {
                 records = records.map(r => r.id === id ? {...r, checkOutDate: new Date().toLocaleDateString(), checkOutReason: reason} : r);
