@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>宿舍住宿人员管理系统</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
@@ -2333,9 +2333,8 @@
                     登记时间: r.recordTime
                 })));
                 autoFitColumns(ws1);
-                // 冻结首行
-                if (!ws1['!views']) ws1['!views'] = [{}];
-                ws1['!views'][0] = { state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+                // 设置冻结首行
+                ws1['!freeze'] = { xSplit: 0, ySplit: 1 };
                 XLSX.utils.book_append_sheet(wb, ws1, '在职人员');
             }
             
@@ -2368,9 +2367,8 @@
                     登记时间: r.recordTime
                 })));
                 autoFitColumns(ws2);
-                // 冻结首行
-                if (!ws2['!views']) ws2['!views'] = [{}];
-                ws2['!views'][0] = { state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+                // 设置冻结首行
+                ws2['!freeze'] = { xSplit: 0, ySplit: 1 };
                 XLSX.utils.book_append_sheet(wb, ws2, '退宿人员');
             }
             
@@ -2384,9 +2382,8 @@
                     备注: r.notes || ''
                 })));
                 autoFitColumns(ws3);
-                // 冻结首行
-                if (!ws3['!views']) ws3['!views'] = [{}];
-                ws3['!views'][0] = { state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+                // 设置冻结首行
+                ws3['!freeze'] = { xSplit: 0, ySplit: 1 };
                 XLSX.utils.book_append_sheet(wb, ws3, '房间管理');
             }
             
@@ -2441,9 +2438,8 @@
             })));
             
             autoFitColumns(ws); // 自动调整列宽
-            // 冻结首行
-            if (!ws['!views']) ws['!views'] = [{}];
-            ws['!views'][0] = { state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+            // 设置冻结首行
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
             XLSX.utils.book_append_sheet(wb, ws, '退宿人员');
             XLSX.writeFile(wb, '退宿人员登记表_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
@@ -2975,9 +2971,8 @@
             })));
             
             autoFitColumns(ws); // 自动调整列宽
-            // 冻结首行
-            if (!ws['!views']) ws['!views'] = [{}];
-            ws['!views'][0] = { state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+            // 设置冻结首行
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
             XLSX.utils.book_append_sheet(wb, ws, '房间配置');
             XLSX.writeFile(wb, '房间配置_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
