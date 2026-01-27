@@ -60,6 +60,118 @@
         .progress-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #2196F3); transition: width 0.3s; }
         .building-section { margin-bottom: 30px; }
         
+        /* 平面图样式 */
+        .floorplan-building { margin-bottom: 40px; }
+        .floorplan-header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 15px 20px; 
+            border-radius: 8px 8px 0 0; 
+            font-size: 18px; 
+            font-weight: bold; 
+        }
+        .floorplan-rooms { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 15px; 
+            padding: 20px; 
+            background: #f5f5f5; 
+            border-radius: 0 0 8px 8px; 
+        }
+        .room-card { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 15px; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            border: 2px solid #e0e0e0; 
+            position: relative;
+        }
+        .room-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15); 
+            border-color: #2196F3; 
+        }
+        .room-card.full { border-color: #f44336; background: #ffebee; }
+        .room-card.empty { border-color: #4CAF50; background: #e8f5e9; }
+        .room-card.partial { border-color: #FF9800; background: #fff3e0; }
+        .room-number { 
+            font-size: 20px; 
+            font-weight: bold; 
+            color: #333; 
+            margin-bottom: 10px; 
+        }
+        .room-status { 
+            font-size: 14px; 
+            color: #666; 
+            margin-bottom: 8px; 
+        }
+        .room-beds { 
+            font-size: 12px; 
+            color: #999; 
+        }
+        .room-badge { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            font-weight: bold; 
+            color: white; 
+        }
+        .room-badge.full { background: #f44336; }
+        .room-badge.empty { background: #4CAF50; }
+        .room-badge.partial { background: #FF9800; }
+        
+        /* 房间详情模态框样式 */
+        .room-detail-modal .modal-content { max-width: 700px; }
+        .resident-list { margin-top: 15px; }
+        .resident-item { 
+            background: #f9f9f9; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+            border-radius: 6px; 
+            border-left: 4px solid #2196F3; 
+        }
+        .resident-name { 
+            font-weight: bold; 
+            font-size: 16px; 
+            color: #333; 
+            margin-bottom: 5px; 
+        }
+        .resident-info { 
+            font-size: 13px; 
+            color: #666; 
+            display: flex; 
+            gap: 15px; 
+            flex-wrap: wrap; 
+        }
+        .bed-visual { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); 
+            gap: 10px; 
+            margin: 15px 0; 
+        }
+        .bed-item { 
+            padding: 12px; 
+            text-align: center; 
+            border-radius: 6px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            border: 2px solid #ddd;
+        }
+        .bed-item.occupied { 
+            background: #ffebee; 
+            border-color: #f44336; 
+            color: #c62828; 
+        }
+        .bed-item.empty { 
+            background: #e8f5e9; 
+            border-color: #4CAF50; 
+            color: #2e7d32; 
+        }
+        
         /* 登录界面样式 */
         .login-container { max-width: 450px; margin: 80px auto; padding: 0 20px; }
         .login-card { background: white; padding: 40px 35px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
@@ -216,6 +328,7 @@
             <button class="tab" onclick="switchTab('list')">人员列表</button>
             <button class="tab" onclick="switchTab('checkout')">退宿人员</button>
             <button class="tab" onclick="switchTab('rooms')">房间管理</button>
+            <button class="tab" onclick="switchTab('floorplan')">宿舍平面图</button>
             <button class="tab" onclick="switchTab('stats')">统计分析</button>
             <button class="tab" onclick="switchTab('settings')">系统设置</button>
         </div>
@@ -414,6 +527,13 @@
             <div id="roomsContainer"></div>
         </div>
 
+        <!-- 宿舍平面图 -->
+        <div id="floorplanTab" class="card hidden">
+            <h2>宿舍平面图</h2>
+            <p style="color: #666; margin-bottom: 20px;">点击房间查看详细入住情况</p>
+            <div id="floorplanContainer"></div>
+        </div>
+
         <!-- 统计分析 -->
         <div id="statsTab" class="card hidden">
             <h2>数据统计</h2>
@@ -588,6 +708,17 @@
                         <button type="button" class="btn btn-secondary" onclick="closeRoomModal()">取消</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- 房间详情模态框 -->
+        <div id="roomDetailModal" class="modal room-detail-modal">
+            <div class="modal-content">
+                <h3 id="roomDetailTitle">房间详情</h3>
+                <div id="roomDetailContent"></div>
+                <div style="margin-top:20px;">
+                    <button class="btn btn-secondary" onclick="closeRoomDetail()">关闭</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1271,6 +1402,9 @@
             }
             if (targetTab === 'rooms') {
                 renderRooms();
+            }
+            if (targetTab === 'floorplan') {
+                renderFloorPlan();
             }
             if (targetTab === 'stats') {
                 renderStats();
@@ -3337,6 +3471,261 @@
             updateRoomSelection();
             
             alert(`成功删除 ${originalLength - rooms.length} 个房间`);
+        }
+
+        // ========== 宿舍平面图相关函数 ==========
+        function renderFloorPlan() {
+            const container = document.getElementById('floorplanContainer');
+            const activeRecords = records.filter(r => !r.checkOutDate);
+            
+            if (rooms.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">暂无房间配置，请先在"房间管理"中添加房间</p>';
+                return;
+            }
+            
+            // 按楼栋分组
+            const buildingGroups = {};
+            rooms.forEach(room => {
+                if (!buildingGroups[room.building]) {
+                    buildingGroups[room.building] = [];
+                }
+                buildingGroups[room.building].push(room);
+            });
+            
+            // 统计每个房间的入住情况
+            const roomOccupancy = {};
+            activeRecords.forEach(r => {
+                if (!r.building || !r.room) return;
+                const key = `${r.building}-${r.room}`;
+                if (!roomOccupancy[key]) {
+                    roomOccupancy[key] = [];
+                }
+                roomOccupancy[key].push(r);
+            });
+            
+            let html = '';
+            
+            // 遍历每个楼栋
+            Object.keys(buildingGroups).sort().forEach(building => {
+                const buildingRooms = buildingGroups[building];
+                
+                // 计算当前楼栋的统计数据
+                let buildingTotalBeds = 0;
+                let buildingOccupiedBeds = 0;
+                
+                buildingRooms.forEach(room => {
+                    const totalBeds = parseInt(room.beds) || 0;
+                    buildingTotalBeds += totalBeds;
+                    const key = `${room.building}-${room.room}`;
+                    const occupants = roomOccupancy[key] || [];
+                    buildingOccupiedBeds += occupants.length;
+                });
+                
+                const buildingAvailableBeds = buildingTotalBeds - buildingOccupiedBeds;
+                const buildingOccupancyRate = buildingTotalBeds > 0 
+                    ? Math.round((buildingOccupiedBeds / buildingTotalBeds) * 100) 
+                    : 0;
+                
+                html += `
+                    <div class="floorplan-building">
+                        <div class="floorplan-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>${building}</span>
+                            <span style="font-size: 16px; font-weight: normal; display: flex; gap: 30px;">
+                                <span><strong style="color: #e3f2fd; margin-right: 5px;">${buildingTotalBeds}</strong>总床位</span>
+                                <span><strong style="color: #ffcdd2; margin-right: 5px;">${buildingOccupiedBeds}</strong>已入住</span>
+                                <span><strong style="color: #c8e6c9; margin-right: 5px;">${buildingAvailableBeds}</strong>剩余</span>
+                                <span><strong style="color: #ffe0b2; margin-right: 5px;">${buildingOccupancyRate}%</strong>入住率</span>
+                            </span>
+                        </div>
+                `;
+                
+                // 特殊处理办公三楼：按北/南分组
+                if (building === '办公三楼') {
+                    // 分组房间
+                    const northRooms = buildingRooms.filter(room => room.room.includes('北'));
+                    const southRooms = buildingRooms.filter(room => room.room.includes('南'));
+                    
+                    // 排序函数：提取数字部分进行排序
+                    const sortByNumber = (a, b) => {
+                        const numA = parseInt(a.room.match(/\d+/)?.[0]) || 0;
+                        const numB = parseInt(b.room.match(/\d+/)?.[0]) || 0;
+                        return numA - numB;
+                    };
+                    
+                    northRooms.sort(sortByNumber);
+                    southRooms.sort(sortByNumber);
+                    
+                    // 北侧房间
+                    if (northRooms.length > 0) {
+                        html += `<div style="padding: 10px 20px; background: #f5f5f5;"><strong>北侧</strong></div>`;
+                        html += `<div class="floorplan-rooms">`;
+                        northRooms.forEach(room => {
+                            html += generateRoomCard(room, roomOccupancy);
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    // 南侧房间
+                    if (southRooms.length > 0) {
+                        html += `<div style="padding: 10px 20px; background: #f5f5f5;"><strong>南侧</strong></div>`;
+                        html += `<div class="floorplan-rooms">`;
+                        southRooms.forEach(room => {
+                            html += generateRoomCard(room, roomOccupancy);
+                        });
+                        html += `</div>`;
+                    }
+                } else {
+                    // 其他楼栋：正常排序显示
+                    html += `<div class="floorplan-rooms">`;
+                    buildingRooms.sort((a, b) => {
+                        const numA = parseInt(a.room) || 0;
+                        const numB = parseInt(b.room) || 0;
+                        return numA - numB;
+                    }).forEach(room => {
+                        html += generateRoomCard(room, roomOccupancy);
+                    });
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // 生成房间卡片的辅助函数
+        function generateRoomCard(room, roomOccupancy) {
+            const key = `${room.building}-${room.room}`;
+            const occupants = roomOccupancy[key] || [];
+            const totalBeds = parseInt(room.beds) || 0;
+            const occupiedBeds = occupants.length;
+            
+            // 确定房间状态
+            let status = 'empty';
+            let statusText = '空房';
+            let statusBadge = '空房';
+            
+            if (occupiedBeds >= totalBeds && totalBeds > 0) {
+                status = 'full';
+                statusText = '已满';
+                statusBadge = '已满';
+            } else if (occupiedBeds > 0) {
+                status = 'partial';
+                statusText = '部分入住';
+                statusBadge = '部分';
+            }
+            
+            return `
+                <div class="room-card ${status}" onclick="showRoomDetail('${room.building}', '${room.room}')">
+                    <div class="room-badge ${status}">${statusBadge}</div>
+                    <div class="room-number">${room.room}号房</div>
+                    <div class="room-status">${statusText}</div>
+                    <div class="room-beds">
+                        已入住: <strong style="color:#f44336;">${occupiedBeds}</strong> / 
+                        总床位: <strong>${totalBeds}</strong>
+                    </div>
+                    ${room.notes ? `<div style="font-size:11px;color:#999;margin-top:5px;">${room.notes}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function showRoomDetail(building, roomNumber) {
+            const room = rooms.find(r => r.building === building && r.room === roomNumber);
+            if (!room) {
+                alert('房间信息不存在');
+                return;
+            }
+            
+            const activeRecords = records.filter(r => !r.checkOutDate);
+            const occupants = activeRecords.filter(r => r.building === building && r.room === roomNumber);
+            const totalBeds = parseInt(room.beds) || 0;
+            const occupiedBeds = occupants.length;
+            const availableBeds = totalBeds - occupiedBeds;
+            
+            // 获取所有已占用的床位号
+            const occupiedBedNumbers = new Set(occupants.map(r => r.bed).filter(Boolean));
+            
+            // 生成床位可视化
+            let bedVisualHtml = '<div class="bed-visual">';
+            for (let i = 1; i <= totalBeds; i++) {
+                const isOccupied = occupiedBedNumbers.has(i.toString()) || occupiedBedNumbers.has(i);
+                const occupant = occupants.find(r => r.bed == i);
+                
+                if (isOccupied && occupant) {
+                    bedVisualHtml += `
+                        <div class="bed-item occupied" title="${occupant.name}">
+                            ${i}号床<br>
+                            <small>${occupant.name}</small>
+                        </div>
+                    `;
+                } else {
+                    bedVisualHtml += `
+                        <div class="bed-item empty">
+                            ${i}号床<br>
+                            <small>空闲</small>
+                        </div>
+                    `;
+                }
+            }
+            bedVisualHtml += '</div>';
+            
+            // 生成入住人员列表
+            let residentsHtml = '';
+            if (occupants.length > 0) {
+                residentsHtml = '<div class="resident-list">';
+                residentsHtml += '<h4 style="margin-bottom:10px;">入住人员：</h4>';
+                
+                occupants.forEach(person => {
+                    residentsHtml += `
+                        <div class="resident-item">
+                            <div class="resident-name">${person.name} - ${person.bed}号床</div>
+                            <div class="resident-info">
+                                <span>性别: ${person.gender}</span>
+                                <span>年龄: ${person.age}</span>
+                                <span>电话: ${person.phone}</span>
+                                ${person.department ? `<span>部门: ${person.department}</span>` : ''}
+                                ${person.checkInDate ? `<span>入住日期: ${person.checkInDate}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                residentsHtml += '</div>';
+            } else {
+                residentsHtml = '<p style="text-align:center;color:#999;padding:20px;background:#f5f5f5;border-radius:6px;">该房间暂无入住人员</p>';
+            }
+            
+            const content = `
+                <div style="background:#f5f5f5;padding:15px;border-radius:6px;margin-bottom:15px;">
+                    <div style="display:flex;justify-content:space-around;text-align:center;">
+                        <div>
+                            <div style="font-size:20px;font-weight:bold;color:#2196F3;">${totalBeds}</div>
+                            <div style="color:#666;font-size:13px;">总床位</div>
+                        </div>
+                        <div>
+                            <div style="font-size:20px;font-weight:bold;color:#f44336;">${occupiedBeds}</div>
+                            <div style="color:#666;font-size:13px;">已入住</div>
+                        </div>
+                        <div>
+                            <div style="font-size:20px;font-weight:bold;color:#4CAF50;">${availableBeds}</div>
+                            <div style="color:#666;font-size:13px;">剩余</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h4 style="margin:15px 0 10px 0;">床位分布：</h4>
+                ${bedVisualHtml}
+                
+                ${residentsHtml}
+            `;
+            
+            document.getElementById('roomDetailTitle').textContent = `${building} - ${roomNumber}号房`;
+            document.getElementById('roomDetailContent').innerHTML = content;
+            document.getElementById('roomDetailModal').classList.add('active');
+        }
+
+        function closeRoomDetail() {
+            document.getElementById('roomDetailModal').classList.remove('active');
         }
 
         // ========== 初始化 ==========
