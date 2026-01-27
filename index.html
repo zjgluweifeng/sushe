@@ -38,8 +38,8 @@
         tr:hover { background: #f9f9f9; }
         .hidden { display: none !important; }
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
-        .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; }
-        .stat-value { font-size: 36px; font-weight: bold; margin: 10px 0; }
+        .stat-card { background: white; padding: 12px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 28px; font-weight: bold; margin: 5px 0; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; padding: 10px; }
         .modal.active { display: flex; }
         .modal-content { background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
@@ -329,7 +329,7 @@
             <button class="tab" onclick="switchTab('checkout')">退宿人员</button>
             <button class="tab" onclick="switchTab('rooms')">房间管理</button>
             <button class="tab" onclick="switchTab('floorplan')">宿舍平面图</button>
-            <button class="tab" onclick="switchTab('stats')">统计分析</button>
+            <button class="tab" onclick="switchTab('stats')">数据概览</button>
             <button class="tab" onclick="switchTab('settings')">系统设置</button>
         </div>
 
@@ -534,12 +534,12 @@
             <div id="floorplanContainer"></div>
         </div>
 
-        <!-- 统计分析 -->
+        <!-- 数据概览 -->
         <div id="statsTab" class="card hidden">
-            <h2>数据统计</h2>
+            <h2>数据总览</h2>
             <div class="stats">
                 <div class="stat-card">
-                    <div>总人数</div>
+                    <div>总人次</div>
                     <div class="stat-value" style="color:#2196F3;" id="total">0</div>
                 </div>
                 <div class="stat-card">
@@ -551,7 +551,7 @@
                     <div class="stat-value" style="color:#FF9800;" id="checkout">0</div>
                 </div>
                 <div class="stat-card">
-                    <div>楼栋数</div>
+                    <div>楼层数</div>
                     <div class="stat-value" style="color:#9C27B0;" id="buildings">0</div>
                 </div>
             </div>
@@ -583,10 +583,10 @@
                 </div>
             </div>
 
-            <h2 style="margin-top: 30px; margin-bottom: 10px; color: #333; font-size: 22px;">📊 房型统计</h2>
+            <h2 style="margin-top: 30px; margin-bottom: 10px; color: #333; font-size: 22px;">📊 房型概况</h2>
             <div id="roomTypeStatsContainer"></div>
 
-            <h2 style="margin-top: 40px; margin-bottom: 10px; color: #333; font-size: 22px;">🛏️ 床位余量统计</h2>
+            <h2 style="margin-top: 40px; margin-bottom: 10px; color: #333; font-size: 22px;">🛏️ 床位使用情况</h2>
             <div id="bedStatsContainer"></div>
         </div>
 
@@ -2302,7 +2302,22 @@
             let html = '';
             
             // 普通房型统计
-            html += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; font-size: 18px; font-weight: bold; margin-top: 20px;">普通宿舍</div>';
+            // 计算普通宿舍的汇总数据
+            let normalTotalBeds = 0;
+            let normalOccupiedBeds = 0;
+            Object.keys(roomTypeStats).forEach(typeName => {
+                normalTotalBeds += roomTypeStats[typeName].totalBeds;
+                normalOccupiedBeds += roomTypeStats[typeName].occupiedBeds;
+            });
+            const normalAvailableBeds = normalTotalBeds - normalOccupiedBeds;
+            const normalPercentage = normalTotalBeds > 0 ? (normalOccupiedBeds / normalTotalBeds * 100).toFixed(0) : 0;
+            
+            html += `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; font-size: 18px; font-weight: bold; margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <span>普通宿舍</span>
+                <span style="font-size: 14px; opacity: 0.9;">
+                    ${normalTotalBeds} 总床位 | ${normalOccupiedBeds} 已入住 | ${normalAvailableBeds} 剩余 | ${normalPercentage}% 入住率
+                </span>
+            </div>`;
             html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; padding: 20px; background: #f5f5f5; border-radius: 0 0 8px 8px; margin-bottom: 20px;">';
             
             // 按床位数排序
@@ -2368,7 +2383,22 @@
             });
             
             if (sortedManagerTypes.length > 0) {
-                html += '<div style="background: linear-gradient(135deg, #9C27B0 0%, #E1BEE7 100%); color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; font-size: 18px; font-weight: bold; margin-top: 20px;">管理人员宿舍</div>';
+                // 计算管理人员宿舍的汇总数据
+                let managerTotalBeds = 0;
+                let managerOccupiedBeds = 0;
+                Object.keys(managerRoomTypeStats).forEach(typeName => {
+                    managerTotalBeds += managerRoomTypeStats[typeName].totalBeds;
+                    managerOccupiedBeds += managerRoomTypeStats[typeName].occupiedBeds;
+                });
+                const managerAvailableBeds = managerTotalBeds - managerOccupiedBeds;
+                const managerPercentage = managerTotalBeds > 0 ? (managerOccupiedBeds / managerTotalBeds * 100).toFixed(0) : 0;
+                
+                html += `<div style="background: linear-gradient(135deg, #9C27B0 0%, #E1BEE7 100%); color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; font-size: 18px; font-weight: bold; margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>管理人员宿舍</span>
+                    <span style="font-size: 14px; opacity: 0.9;">
+                        ${managerTotalBeds} 总床位 | ${managerOccupiedBeds} 已入住 | ${managerAvailableBeds} 剩余 | ${managerPercentage}% 入住率
+                    </span>
+                </div>`;
                 html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; padding: 20px; background: #f5f5f5; border-radius: 0 0 8px 8px; margin-bottom: 20px;">';
                 
                 sortedManagerTypes.forEach(typeName => {
@@ -2509,9 +2539,28 @@
                 
                 // 生成房间卡片
                 Object.keys(roomsData).sort((a, b) => {
-                    const numA = parseInt(a) || 0;
-                    const numB = parseInt(b) || 0;
-                    return numA - numB;
+                    if (building === '办公三楼') {
+                        // 办公三楼特殊排序：北侧房间从小到大，南侧房间从小到大
+                        const isNorthA = a.includes('北');
+                        const isNorthB = b.includes('北');
+                        const numA = parseInt(a.match(/\d+/)?.[0]) || 0;
+                        const numB = parseInt(b.match(/\d+/)?.[0]) || 0;
+                        
+                        // 如果都是北侧或都是南侧，按照从小到大排序
+                        if (isNorthA && isNorthB) {
+                            return numA - numB; // 北侧：从小到大
+                        } else if (!isNorthA && !isNorthB) {
+                            return numA - numB; // 南侧：从小到大
+                        } else {
+                            // 北侧排在前面
+                            return isNorthA ? -1 : 1;
+                        }
+                    } else {
+                        // 其他楼栋按从小到大排序
+                        const numA = parseInt(a) || 0;
+                        const numB = parseInt(b) || 0;
+                        return numA - numB;
+                    }
                 }).forEach(room => {
                     const roomData = roomsData[room];
                     const total = roomData.totalBeds;
