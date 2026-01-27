@@ -326,9 +326,9 @@
 
         <!-- 人员列表 -->
         <div id="listTab" class="card hidden">
-            <h2>在住人员列表</h2>
-            <div class="toolbar">
-                <input type="text" id="search" placeholder="搜索姓名、身份证号、电话..." style="flex:1;max-width:300px;padding:10px;" oninput="filterRecords()">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+                <h2 style="margin: 0;">在住人员列表</h2>
+                <input type="text" id="search" placeholder="搜索姓名、身份证号、电话..." style="flex:1;max-width:300px;padding:10px;border:1px solid #ddd;border-radius:6px;" oninput="filterRecords()">
                 <select id="dormFilter" style="padding:10px;border:1px solid #ddd;border-radius:6px;min-width:200px;" onchange="filterRecords()">
                     <option value="">全部宿舍</option>
                 </select>
@@ -364,9 +364,9 @@
 
         <!-- 退宿人员 -->
         <div id="checkoutTab" class="card hidden">
-            <h2>退宿人员列表</h2>
-            <div class="toolbar">
-                <input type="text" id="searchCheckout" placeholder="搜索姓名、身份证号、电话..." style="flex:1;max-width:400px;padding:10px;" oninput="filterCheckoutRecords()">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+                <h2 style="margin: 0;">退宿人员列表</h2>
+                <input type="text" id="searchCheckout" placeholder="搜索姓名、身份证号、电话..." style="flex:1;max-width:400px;padding:10px;border:1px solid #ddd;border-radius:6px;" oninput="filterCheckoutRecords()">
                 <div class="batch-actions" id="batchActionsCheckout" style="display:none;">
                     <span class="selected-count">已选择 <span id="selectedCountCheckout">0</span> 条</span>
                     <button class="btn btn-danger" onclick="batchDeleteCheckout()">🗑️ 批量删除</button>
@@ -401,11 +401,9 @@
 
         <!-- 房间管理 -->
         <div id="roomsTab" class="card hidden">
-            <h2>房间管理</h2>
-            <div class="toolbar">
-                <div>
-                    <button class="btn btn-primary" onclick="showAddRoom()">➕ 添加房间</button>
-                </div>
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+                <h2 style="margin: 0;">房间管理</h2>
+                <button class="btn btn-primary" onclick="showAddRoom()">➕ 添加房间</button>
                 <div class="batch-actions" id="batchActionsRooms" style="display:none;">
                     <span class="selected-count">已选择 <span id="selectedCountRooms">0</span> 条</span>
                     <button class="btn btn-danger" onclick="batchDeleteRooms()">🗑️ 批量删除</button>
