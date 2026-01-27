@@ -2304,10 +2304,9 @@
         }
 
         function exportExcel() {
-            if (!records.length) return alert('暂无数据');
-            
             const wb = XLSX.utils.book_new();
             
+            // 1. 在职人员
             const activeRecords = records.filter(r => !r.checkOutDate);
             if (activeRecords.length > 0) {
                 const ws1 = XLSX.utils.json_to_sheet(activeRecords.map((r, i) => ({
@@ -2333,10 +2332,12 @@
                     备注: r.notes,
                     登记时间: r.recordTime
                 })));
-                autoFitColumns(ws1); // 自动调整列宽
+                autoFitColumns(ws1);
+                ws1['!freeze'] = { xSplit: 0, ySplit: 1 }; // 冻结首行
                 XLSX.utils.book_append_sheet(wb, ws1, '在职人员');
             }
             
+            // 2. 退宿人员
             const checkoutRecords = records.filter(r => r.checkOutDate);
             if (checkoutRecords.length > 0) {
                 const ws2 = XLSX.utils.json_to_sheet(checkoutRecords.map((r, i) => ({
@@ -2364,15 +2365,30 @@
                     备注: r.notes,
                     登记时间: r.recordTime
                 })));
-                autoFitColumns(ws2); // 自动调整列宽
+                autoFitColumns(ws2);
+                ws2['!freeze'] = { xSplit: 0, ySplit: 1 }; // 冻结首行
                 XLSX.utils.book_append_sheet(wb, ws2, '退宿人员');
             }
             
-            if (activeRecords.length === 0 && checkoutRecords.length === 0) {
+            // 3. 房间管理
+            if (rooms.length > 0) {
+                const ws3 = XLSX.utils.json_to_sheet(rooms.map((r, i) => ({
+                    序号: i + 1,
+                    楼栋: r.building,
+                    房间号: r.room,
+                    床位数: r.beds,
+                    备注: r.notes || ''
+                })));
+                autoFitColumns(ws3);
+                ws3['!freeze'] = { xSplit: 0, ySplit: 1 }; // 冻结首行
+                XLSX.utils.book_append_sheet(wb, ws3, '房间管理');
+            }
+            
+            if (activeRecords.length === 0 && checkoutRecords.length === 0 && rooms.length === 0) {
                 return alert('暂无数据可导出');
             }
             
-            XLSX.writeFile(wb, '宿舍住宿人员登记表_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
+            XLSX.writeFile(wb, '住宿人员管理_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
 
         function showImport() {
@@ -2419,6 +2435,7 @@
             })));
             
             autoFitColumns(ws); // 自动调整列宽
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 }; // 冻结首行
             XLSX.utils.book_append_sheet(wb, ws, '退宿人员');
             XLSX.writeFile(wb, '退宿人员登记表_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
@@ -2950,6 +2967,7 @@
             })));
             
             autoFitColumns(ws); // 自动调整列宽
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 }; // 冻结首行
             XLSX.utils.book_append_sheet(wb, ws, '房间配置');
             XLSX.writeFile(wb, '房间配置_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
