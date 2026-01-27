@@ -614,8 +614,11 @@
         };
 
         function checkFirstTimeUse() {
-            // 检查users对象中是否有任何用户（从云端或本地加载的）
-            const hasUsers = Object.keys(users).length > 0;
+            // 从localStorage读取users数据
+            const savedUsers = JSON.parse(localStorage.getItem('users') || '{}');
+            
+            // 检查是否有任何用户（从云端或本地加载的）
+            const hasUsers = Object.keys(savedUsers).length > 0;
             
             // 只有在users对象为空（云端和本地都没有用户数据）时才需要设置密码
             if (!hasUsers) {
@@ -3338,18 +3341,31 @@
 
         // ========== 初始化 ==========
         window.onload = async function() {
-            // 优先从GitHub加载用户数据
+            // 检查是否已登录
+            const savedUser = localStorage.getItem('currentUser');
+            
+            // 如果已登录，直接显示主应用，不需要其他检查
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    // 异步加载用户数据（不阻塞登录）
+                    loadUsersFromGitHub().catch(err => console.error('加载云端数据失败:', err));
+                    showMainApp();
+                    return;
+                } catch (error) {
+                    console.error('解析用户数据失败:', error);
+                    localStorage.removeItem('currentUser');
+                }
+            }
+            
+            // 未登录：优先从GitHub加载用户数据
             await loadUsersFromGitHub();
             
             // 检查是否首次使用（只有在本地和云端都没有用户数据时才提示）
-            checkFirstTimeUse();
+            const needSetup = checkFirstTimeUse();
             
-            // 检查是否已登录
-            const savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                showMainApp();
-            } else {
+            // 如果不需要设置，显示登录界面
+            if (!needSetup) {
                 showLoginScreen();
             }
         };
