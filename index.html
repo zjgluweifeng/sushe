@@ -368,7 +368,6 @@
             <div class="toolbar">
                 <input type="text" id="searchCheckout" placeholder="搜索姓名、身份证号、电话..." style="flex:1;max-width:400px;padding:10px;" oninput="filterCheckoutRecords()">
                 <button class="btn btn-primary" onclick="exportCheckoutExcel()">📥 导出退宿人员</button>
-                <button class="btn btn-info" onclick="showImportCheckout()">📤 批量导入退宿</button>
                 <div class="batch-actions" id="batchActionsCheckout" style="display:none;">
                     <span class="selected-count">已选择 <span id="selectedCountCheckout">0</span> 条</span>
                     <button class="btn btn-danger" onclick="batchDeleteCheckout()">🗑️ 批量删除</button>
@@ -526,21 +525,14 @@
         <div id="importModal" class="modal">
             <div class="modal-content">
                 <h3>批量导入数据</h3>
-                <p style="margin:15px 0;">请上传Excel文件,支持包含以下列:姓名、身份证号、联系电话、部门、宿舍等信息</p>
+                <p style="margin:15px 0;">请上传Excel文件，支持以下两种格式：</p>
+                <p style="margin:10px 0;padding-left:20px;">
+                    <strong>1. 单sheet文件：</strong>仅导入在职人员数据<br>
+                    <strong>2. 多sheet文件：</strong>自动识别"在职人员"、"退宿人员"、"房间管理"三个sheet并分别导入
+                </p>
                 <p style="margin:15px 0;color:#ff9800;font-weight:bold;">⚠️ 批量导入已关闭身份证号格式验证,可导入任意格式数据</p>
                 <input type="file" accept=".xlsx,.xls" onchange="handleImport(event)" style="margin-bottom:15px;">
                 <button class="btn btn-danger" onclick="closeImport()">关闭</button>
-            </div>
-        </div>
-
-        <!-- 退宿人员导入模态框 -->
-        <div id="importCheckoutModal" class="modal">
-            <div class="modal-content">
-                <h3>批量导入退宿人员</h3>
-                <p style="margin:15px 0;">请上传Excel文件,支持包含以下列:姓名、身份证号、联系电话、部门、退宿日期、退宿原因等信息</p>
-                <p style="margin:15px 0;color:#ff9800;font-weight:bold;">⚠️ 批量导入已关闭身份证号格式验证,可导入任意格式数据</p>
-                <input type="file" accept=".xlsx,.xls" onchange="handleImportCheckout(event)" style="margin-bottom:15px;">
-                <button class="btn btn-danger" onclick="closeImportCheckout()">关闭</button>
             </div>
         </div>
 
@@ -2440,15 +2432,8 @@
             XLSX.writeFile(wb, '退宿人员登记表_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.xlsx');
         }
 
-        function showImportCheckout() {
-            document.getElementById('importCheckoutModal').classList.add('active');
-        }
 
-        function closeImportCheckout() {
-            document.getElementById('importCheckoutModal').classList.remove('active');
-        }
-
-        function handleImportCheckout(e) {
+        function handleImport(e) {
             const file = e.target.files[0];
             if (!file) return;
             
@@ -2456,348 +2441,301 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, {type: 'array'});
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(ws, {raw: false, defval: ''});
+                    const wb = XLSX.read(data, {type: 'array', cellText: false, cellDates: true});
                     
-                    if (json.length === 0) {
-                        alert('Excel文件为空!');
-                        return;
-                    }
+                    // 检查是否有多个sheet
+                    const sheetNames = wb.SheetNames;
+                    let hasMultipleSheets = false;
+                    let importStats = {
+                        activeRecords: 0,
+                        checkoutRecords: 0,
+                        rooms: 0
+                    };
                     
-                    let success = 0;
-                    let error = 0;
-                    let errorDetails = [];
+                    // 识别sheet名称
+                    const activeSheetNames = ['在职人员', '在职', '人员登记', '员工'];
+                    const checkoutSheetNames = ['退宿人员', '退宿', '离职人员'];
+                    const roomSheetNames = ['房间管理', '房间配置', '房间', '宿舍配置'];
                     
-                    const formatDate = (dateValue) => {
-                        if (!dateValue || dateValue === '') return '';
-                        
-                        let date;
-                        if (typeof dateValue === 'string') {
-                            dateValue = dateValue.trim();
-                            
-                            if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateValue)) {
-                                date = new Date(dateValue);
-                            }
-                            else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(dateValue)) {
-                                date = new Date(dateValue.replace(/\//g, '-'));
-                            }
-                            else if (/^\d{4}\.\d{1,2}\.\d{1,2}$/.test(dateValue)) {
-                                const parts = dateValue.split('.');
-                                date = new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
-                            }
-                            else if (/^\d{4}年\d{1,2}月\d{1,2}日?$/.test(dateValue)) {
-                                const matches = dateValue.match(/(\d{4})年(\d{1,2})月(\d{1,2})/);
-                                if (matches) {
-                                    date = new Date(matches[1], matches[2] - 1, matches[3]);
-                                }
-                            }
-                            else {
-                                date = new Date(dateValue);
-                            }
-                        }
-                        else if (dateValue instanceof Date) {
-                            date = dateValue;
-                        }
-                        
-                        if (!date || isNaN(date.getTime())) {
-                            return dateValue;
-                        }
-                        
-                        const year = date.getFullYear();
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
-                        
-                        return `${year}-${month}-${day}`;
-                    }
+                    let foundActiveSheet = false;
+                    let foundCheckoutSheet = false;
+                    let foundRoomSheet = false;
                     
-                    json.forEach((row, index) => {
-                        const getName = (names) => {
-                            for (let name of names) {
-                                const value = row[name];
-                                if (value !== undefined && value !== null && value !== '') {
-                                    return value;
-                                }
-                            }
-                            return '';
-                        };
+                    // 检查是否有匹配的sheet
+                    sheetNames.forEach(name => {
+                        if (activeSheetNames.some(n => name.includes(n))) foundActiveSheet = true;
+                        if (checkoutSheetNames.some(n => name.includes(n))) foundCheckoutSheet = true;
+                        if (roomSheetNames.some(n => name.includes(n))) foundRoomSheet = true;
+                    });
+                    
+                    hasMultipleSheets = foundActiveSheet || foundCheckoutSheet || foundRoomSheet;
+                    
+                    if (!hasMultipleSheets) {
+                        // 单sheet模式，只导入在职人员
+                        const ws = wb.Sheets[sheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(ws, {raw: false, defval: ''});
                         
-                        let idCard = getName([
-                            '身份证号', '身份证号码', '身份证', 'ID', 'idCard', 
-                            '证件号', '证件号码', '身份证 号码', '身份证 号',
-                            'ID Card', 'IdCard', 'IDCARD', '身份证件号码'
-                        ]);
-                        
-                        if (idCard) {
-                            idCard = String(idCard);
-                            idCard = idCard.replace(/[\s\n\r\t]/g, '');
-                            idCard = idCard.toUpperCase();
-                            
-                            if (idCard.includes('E+') || idCard.includes('e+')) {
-                                try {
-                                    const num = parseFloat(idCard);
-                                    idCard = num.toFixed(0);
-                                } catch (err) {
-                                    idCard = '';
-                                }
-                            }
-                        }
-                        
-                        // 退宿人员导入允许身份证号重复，已移除重复检查
-                        
-                        let gender = getName(['性别', 'gender', '男女']) || '';
-                        let age = getName(['年龄', 'age'])?.toString() || '';
-                        let birthDate = getName(['出生日期', '生日', 'birthDate', '出生']) || '';
-                        
-                        if (idCard && idCard.length === 18 && /^\d{17}[\dX]$/.test(idCard)) {
-                            const genderCode = parseInt(idCard.charAt(16));
-                            gender = genderCode % 2 === 1 ? '男' : '女';
-                            const year = parseInt(idCard.substring(6, 10));
-                            const month = idCard.substring(10, 12);
-                            const day = idCard.substring(12, 14);
-                            birthDate = `${year}-${month}-${day}`;
-                            age = (new Date().getFullYear() - year).toString();
-                        }
-                        
-                        let phone = getName(['电话', '联系电话', '手机号', 'phone', '手机', '联系方式']);
-                        if (phone) {
-                            phone = String(phone).replace(/[\s\n\r\t]/g, '');
-                        }
-                        
-                        const checkOutDate = formatDate(getName(['退宿日期', '退宿时间', 'checkOutDate', '退宿']));
-                        
-                        // 如果没有退宿日期，跳过这条记录
-                        if (!checkOutDate) {
-                            error++;
-                            if (errorDetails.length < 5) {
-                                errorDetails.push(`第${index + 2}行:缺少退宿日期`);
-                            }
+                        if (json.length === 0) {
+                            alert('Excel文件为空!');
                             return;
                         }
                         
-                        records.push({
-                            id: Date.now() + Math.random(),
-                            name: getName(['姓名', '员工姓名', 'name', '名字']) || '',
-                            idCard: idCard || '',
-                            gender: gender,
-                            birthDate: birthDate,
-                            age: age,
-                            phone: phone || '',
-                            address: getName(['地址', '家庭地址', 'address', '住址']) || '',
-                            ethnicity: getName(['民族', 'ethnicity']) || '',
-                            sourceUnit: getName(['来源单位', '原单位', 'sourceUnit', '单位']) || '',
-                            department: getName(['部门', '入职部门', '所属部门', 'department']) || '',
-                            building: getName(['楼栋', '宿舍楼栋', '原楼栋', 'building', '宿舍']) || '',
-                            room: getName(['房间', '房间号', '原房间', 'room', '房号'])?.toString() || '',
-                            bed: getName(['床位', '床位号', '原床位', 'bed', '床号'])?.toString() || '',
-                            checkInDate: formatDate(getName(['入住日期', '入住时间', 'checkInDate', '入住'])),
-                            checkOutDate: checkOutDate,
-                            checkOutReason: getName(['退宿原因', '原因', 'checkOutReason', '退房原因']) || '',
-                            emergencyContact: getName(['紧急联系人', '联系人', 'emergencyContact', '家属']) || '',
-                            emergencyPhone: getName(['紧急联系电话', '紧急电话', 'emergencyPhone', '家属电话'])?.toString() || '',
-                            resignDate: formatDate(getName(['离职日期', '离职时间', 'resignDate', '离职'])),
-                            handover: getName(['交割手续', '交接状态', 'handover', '交接']) || '',
-                            notes: getName(['备注', '说明', 'notes', '备注说明']) || '',
-                            recordTime: new Date().toLocaleString('zh-CN')
+                        if (!confirm(`检测到单sheet文件，将导入 ${json.length} 条在职人员数据。\n\n确认导入？`)) {
+                            return;
+                        }
+                        
+                        importStats.activeRecords = importPersonnelSheet(json, false);
+                    } else {
+                        // 多sheet模式
+                        if (!confirm(`检测到多sheet文件！\n\n将自动识别以下内容：\n- 在职人员\n- 退宿人员\n- 房间管理\n\n确认导入？`)) {
+                            return;
+                        }
+                        
+                        // 导入在职人员
+                        sheetNames.forEach(name => {
+                            if (activeSheetNames.some(n => name.includes(n))) {
+                                const ws = wb.Sheets[name];
+                                const json = XLSX.utils.sheet_to_json(ws, {raw: false, defval: ''});
+                                if (json.length > 0) {
+                                    importStats.activeRecords += importPersonnelSheet(json, false);
+                                }
+                            }
                         });
-                        success++;
-                    });
-                    
-                    localStorage.setItem('dormRecords', JSON.stringify(records));
-                    renderCheckoutTable();
-                    closeImportCheckout();
-                    
-                    let message = `导入完成!\n成功: ${success} 条\n失败: ${error} 条`;
-                    if (errorDetails.length > 0) {
-                        message += '\n\n错误详情:\n' + errorDetails.join('\n');
-                        if (error > errorDetails.length) {
-                            message += `\n...还有 ${error - errorDetails.length} 条错误`;
-                        }
-                    }
-                    alert(message);
-                } catch (err) {
-                    alert('文件解析失败: ' + err.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function handleImport(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, {type: 'array', cellText: false, cellDates: true});
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(ws, {raw: false, defval: ''});
-                    
-                    if (json.length === 0) {
-                        alert('Excel文件为空或格式不正确!');
-                        return;
-                    }
-                    
-                    const columnNames = Object.keys(json[0]).join('、');
-                    
-                    const userConfirm = confirm(
-                        `检测到Excel包含以下列:\n\n${columnNames}\n\n` +
-                        `准备导入 ${json.length} 行数据\n\n` +
-                        `⚠️ 注意:批量导入已关闭身份证号验证,可导入任意格式数据\n` +
-                        `仅检查身份证号是否重复\n\n` +
-                        `点击"确定"继续导入`
-                    );
-                    
-                    if (!userConfirm) {
-                        return;
-                    }
-                    
-                    let success = 0;
-                    let error = 0;
-                    let errorDetails = [];
-                    
-                    function formatDate(dateValue) {
-                        if (!dateValue) return '';
                         
-                        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-                            return dateValue;
-                        }
-                        
-                        let date;
-                        
-                        if (typeof dateValue === 'number') {
-                            date = new Date((dateValue - 25569) * 86400 * 1000);
-                        }
-                        else if (typeof dateValue === 'string') {
-                            dateValue = dateValue.trim();
-                            
-                            if (/^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(dateValue)) {
-                                const parts = dateValue.split(/[/-]/);
-                                date = new Date(parts[0], parts[1] - 1, parts[2]);
-                            }
-                            else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(dateValue)) {
-                                const parts = dateValue.split(/[/-]/);
-                                date = new Date(parts[2], parts[1] - 1, parts[0]);
-                            }
-                            else if (/^\d{4}年\d{1,2}月\d{1,2}日?$/.test(dateValue)) {
-                                const matches = dateValue.match(/(\d{4})年(\d{1,2})月(\d{1,2})/);
-                                if (matches) {
-                                    date = new Date(matches[1], matches[2] - 1, matches[3]);
+                        // 导入退宿人员
+                        sheetNames.forEach(name => {
+                            if (checkoutSheetNames.some(n => name.includes(n))) {
+                                const ws = wb.Sheets[name];
+                                const json = XLSX.utils.sheet_to_json(ws, {raw: false, defval: ''});
+                                if (json.length > 0) {
+                                    importStats.checkoutRecords += importPersonnelSheet(json, true);
                                 }
                             }
-                            else {
-                                date = new Date(dateValue);
-                            }
-                        }
-                        else if (dateValue instanceof Date) {
-                            date = dateValue;
-                        }
-                        
-                        if (!date || isNaN(date.getTime())) {
-                            return dateValue;
-                        }
-                        
-                        const year = date.getFullYear();
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
-                        
-                        return `${year}-${month}-${day}`;
-                    }
-                    
-                    json.forEach((row, index) => {
-                        const getName = (names) => {
-                            for (let name of names) {
-                                const value = row[name];
-                                if (value !== undefined && value !== null && value !== '') {
-                                    return value;
-                                }
-                            }
-                            return '';
-                        };
-                        
-                        let idCard = getName([
-                            '身份证号', '身份证号码', '身份证', 'ID', 'idCard', 
-                            '证件号', '证件号码', '身份证 号码', '身份证 号',
-                            'ID Card', 'IdCard', 'IDCARD', '身份证件号码'
-                        ]);
-                        
-                        if (idCard) {
-                            idCard = String(idCard);
-                            idCard = idCard.replace(/[\s\n\r\t]/g, '');
-                            idCard = idCard.toUpperCase();
-                            
-                            if (idCard.includes('E+') || idCard.includes('e+')) {
-                                try {
-                                    const num = parseFloat(idCard);
-                                    idCard = num.toFixed(0);
-                                } catch (err) {
-                                    idCard = '';
-                                }
-                            }
-                        }
-                        
-                        // 允许身份证号重复，已移除重复检查
-                        
-                        let gender = getName(['性别', 'gender', '男女']) || '';
-                        let age = getName(['年龄', 'age'])?.toString() || '';
-                        let birthDate = getName(['出生日期', '生日', 'birthDate', '出生']) || '';
-                        
-                        if (idCard && idCard.length === 18 && /^\d{17}[\dX]$/.test(idCard)) {
-                            const genderCode = parseInt(idCard.charAt(16));
-                            gender = genderCode % 2 === 1 ? '男' : '女';
-                            const year = parseInt(idCard.substring(6, 10));
-                            const month = idCard.substring(10, 12);
-                            const day = idCard.substring(12, 14);
-                            birthDate = `${year}-${month}-${day}`;
-                            age = (new Date().getFullYear() - year).toString();
-                        }
-                        
-                        let phone = getName(['电话', '联系电话', '手机号', 'phone', '手机', '联系方式']);
-                        if (phone) {
-                            phone = String(phone).replace(/[\s\n\r\t]/g, '');
-                        }
-                        
-                        records.push({
-                            id: Date.now() + Math.random(),
-                            name: getName(['姓名', '员工姓名', 'name', '名字']) || '',
-                            idCard: idCard || '',
-                            gender: gender,
-                            birthDate: birthDate,
-                            age: age,
-                            phone: phone || '',
-                            address: getName(['地址', '家庭地址', 'address', '住址']) || '',
-                            ethnicity: getName(['民族', 'ethnicity']) || '',
-                            sourceUnit: getName(['来源单位', '原单位', 'sourceUnit', '单位']) || '',
-                            department: getName(['部门', '入职部门', '所属部门', 'department']) || '',
-                            building: getName(['楼栋', '宿舍楼栋', '楼层', 'building', '宿舍']) || '',
-                            room: getName(['房间', '房间号', 'room', '房号'])?.toString() || '',
-                            bed: getName(['床位', '床位号', 'bed', '床号'])?.toString() || '',
-                            checkInDate: formatDate(getName(['入住日期', '入住时间', 'checkInDate', '入住'])),
-                            emergencyContact: getName(['紧急联系人', '联系人', 'emergencyContact', '家属']) || '',
-                            emergencyPhone: getName(['紧急联系电话', '紧急电话', 'emergencyPhone', '家属电话'])?.toString() || '',
-                            resignDate: formatDate(getName(['离职日期', '离职时间', 'resignDate', '离职'])),
-                            handover: getName(['交割手续', '交接状态', 'handover', '交接']) || '',
-                            notes: getName(['备注', '说明', 'notes', '备注说明']) || '',
-                            checkOutDate: formatDate(getName(['退宿日期', '退房日期', 'checkOutDate', '退宿'])),
-                            checkOutReason: getName(['退宿原因', '退房原因', 'checkOutReason', '退宿说明']) || '',
-                            recordTime: new Date().toLocaleString()
                         });
-                        success++;
-                    });
+                        
+                        // 导入房间管理
+                        sheetNames.forEach(name => {
+                            if (roomSheetNames.some(n => name.includes(n))) {
+                                const ws = wb.Sheets[name];
+                                const json = XLSX.utils.sheet_to_json(ws, {raw: false, defval: ''});
+                                if (json.length > 0) {
+                                    importStats.rooms += importRoomsSheet(json);
+                                }
+                            }
+                        });
+                    }
                     
+                    // 保存数据
                     localStorage.setItem('dormRecords', JSON.stringify(records));
+                    localStorage.setItem('dormRooms', JSON.stringify(rooms));
                     
-                    let message = `📊 导入完成!\n\n✅ 成功:${success} 条\n❌ 失败:${error} 条`;
-                    if (errorDetails.length > 0) {
-                        message += '\n\n错误详情(前5条):\n' + errorDetails.join('\n');
-                        if (error > 5) {
-                            message += `\n\n... 还有 ${error - 5} 条类似错误`;
-                        }
+                    // 显示导入结果
+                    let message = '📊 导入完成！\n\n';
+                    if (importStats.activeRecords > 0) {
+                        message += `✅ 在职人员：${importStats.activeRecords} 条\n`;
+                    }
+                    if (importStats.checkoutRecords > 0) {
+                        message += `✅ 退宿人员：${importStats.checkoutRecords} 条\n`;
+                    }
+                    if (importStats.rooms > 0) {
+                        message += `✅ 房间配置：${importStats.rooms} 条\n`;
                     }
                     
                     alert(message);
                     closeImport();
                     renderTable();
+                    renderCheckoutTable();
+                    renderRooms();
+                } catch (err) {
+                    alert('文件解析失败：' + err.message);
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // 导入人员数据的辅助函数
+        function importPersonnelSheet(json, isCheckout) {
+            let count = 0;
+            
+            function formatDate(dateValue) {
+                if (!dateValue) return '';
+                
+                if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                    return dateValue;
+                }
+                
+                let date;
+                
+                if (typeof dateValue === 'number') {
+                    date = new Date((dateValue - 25569) * 86400 * 1000);
+                }
+                else if (typeof dateValue === 'string') {
+                    dateValue = dateValue.trim();
+                    
+                    if (/^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(dateValue)) {
+                        const parts = dateValue.split(/[/-]/);
+                        date = new Date(parts[0], parts[1] - 1, parts[2]);
+                    }
+                    else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(dateValue)) {
+                        const parts = dateValue.split(/[/-]/);
+                        date = new Date(parts[2], parts[1] - 1, parts[0]);
+                    }
+                    else if (/^\d{4}年\d{1,2}月\d{1,2}日?$/.test(dateValue)) {
+                        const matches = dateValue.match(/(\d{4})年(\d{1,2})月(\d{1,2})/);
+                        if (matches) {
+                            date = new Date(matches[1], matches[2] - 1, matches[3]);
+                        }
+                    }
+                    else {
+                        date = new Date(dateValue);
+                    }
+                }
+                else if (dateValue instanceof Date) {
+                    date = dateValue;
+                }
+                
+                if (!date || isNaN(date.getTime())) {
+                    return dateValue;
+                }
+                
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                
+                return `${year}-${month}-${day}`;
+            }
+            
+            json.forEach((row, index) => {
+                const getName = (names) => {
+                    for (let name of names) {
+                        const value = row[name];
+                        if (value !== undefined && value !== null && value !== '') {
+                            return value;
+                        }
+                    }
+                    return '';
+                };
+                
+                let idCard = getName([
+                    '身份证号', '身份证号码', '身份证', 'ID', 'idCard', 
+                    '证件号', '证件号码', '身份证 号码', '身份证 号',
+                    'ID Card', 'IdCard', 'IDCARD', '身份证件号码'
+                ]);
+                
+                if (idCard) {
+                    idCard = String(idCard);
+                    idCard = idCard.replace(/[\s\n\r\t]/g, '');
+                    idCard = idCard.toUpperCase();
+                    
+                    if (idCard.includes('E+') || idCard.includes('e+')) {
+                        try {
+                            const num = parseFloat(idCard);
+                            idCard = num.toFixed(0);
+                        } catch (err) {
+                            idCard = '';
+                        }
+                    }
+                }
+                
+                let gender = getName(['性别', 'gender', '男女']) || '';
+                let age = getName(['年龄', 'age'])?.toString() || '';
+                let birthDate = getName(['出生日期', '生日', 'birthDate', '出生']) || '';
+                
+                if (idCard && idCard.length === 18 && /^\d{17}[\dX]$/.test(idCard)) {
+                    const genderCode = parseInt(idCard.charAt(16));
+                    gender = genderCode % 2 === 1 ? '男' : '女';
+                    const year = parseInt(idCard.substring(6, 10));
+                    const month = idCard.substring(10, 12);
+                    const day = idCard.substring(12, 14);
+                    birthDate = `${year}-${month}-${day}`;
+                    age = (new Date().getFullYear() - year).toString();
+                }
+                
+                let phone = getName(['电话', '联系电话', '手机号', 'phone', '手机', '联系方式']);
+                if (phone) {
+                    phone = String(phone).replace(/[\s\n\r\t]/g, '');
+                }
+                
+                const record = {
+                    id: Date.now() + Math.random(),
+                    name: getName(['姓名', '员工姓名', 'name', '名字']) || '',
+                    idCard: idCard || '',
+                    gender: gender,
+                    birthDate: birthDate,
+                    age: age,
+                    phone: phone || '',
+                    address: getName(['地址', '家庭地址', 'address', '住址']) || '',
+                    ethnicity: getName(['民族', 'ethnicity']) || '',
+                    sourceUnit: getName(['来源单位', '原单位', 'sourceUnit', '单位']) || '',
+                    department: getName(['部门', '入职部门', '所属部门', 'department']) || '',
+                    building: getName(['楼栋', '宿舍楼栋', '楼层', 'building', '宿舍', '原楼栋']) || '',
+                    room: getName(['房间', '房间号', 'room', '房号', '原房间'])?.toString() || '',
+                    bed: getName(['床位', '床位号', 'bed', '床号', '原床位'])?.toString() || '',
+                    checkInDate: formatDate(getName(['入住日期', '入住时间', 'checkInDate', '入住'])),
+                    emergencyContact: getName(['紧急联系人', '联系人', 'emergencyContact', '家属']) || '',
+                    emergencyPhone: getName(['紧急联系电话', '紧急电话', 'emergencyPhone', '家属电话'])?.toString() || '',
+                    resignDate: formatDate(getName(['离职日期', '离职时间', 'resignDate', '离职'])),
+                    handover: getName(['交割手续', '交接状态', 'handover', '交接']) || '',
+                    notes: getName(['备注', '说明', 'notes', '备注说明']) || '',
+                    recordTime: new Date().toLocaleString()
+                };
+                
+                // 如果是退宿人员，添加退宿信息
+                if (isCheckout) {
+                    record.checkOutDate = formatDate(getName(['退宿日期', '退房日期', 'checkOutDate', '退宿']));
+                    record.checkOutReason = getName(['退宿原因', '退房原因', 'checkOutReason', '退宿说明']) || '';
+                }
+                
+                records.push(record);
+                count++;
+            });
+            
+            return count;
+        }
+        
+        // 导入房间数据的辅助函数
+        function importRoomsSheet(json) {
+            let count = 0;
+            
+            json.forEach((row, index) => {
+                const getName = (names) => {
+                    for (let name of names) {
+                        const value = row[name];
+                        if (value !== undefined && value !== null && value !== '') {
+                            return value;
+                        }
+                    }
+                    return '';
+                };
+                
+                const building = getName(['楼栋', 'building', '宿舍楼']) || '';
+                const room = getName(['房间号', '房间', 'room']) || '';
+                const beds = parseInt(getName(['床位数', '床位', 'beds'])) || 0;
+                const notes = getName(['备注', 'notes', '说明']) || '';
+                
+                if (!building || !room || beds <= 0) {
+                    return;
+                }
+                
+                // 检查是否已存在
+                const existing = rooms.find(r => r.building === building && r.room === room);
+                if (existing) {
+                    return;
+                }
+                
+                rooms.push({
+                    id: Date.now() + Math.random(),
+                    building,
+                    room,
+                    beds,
+                    notes
+                });
+                count++;
+            });
+            
+            return count;
+        }
                 } catch (err) {
                     alert('❌ 文件解析失败:' + err.message + '\n\n请确保:\n1. 上传的是Excel文件(.xlsx或.xls)\n2. 文件未损坏\n3. 文件中有数据');
                     console.error('导入错误:', err);
