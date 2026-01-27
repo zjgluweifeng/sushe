@@ -3265,14 +3265,13 @@
             
             // 更新全选复选框状态
             document.querySelectorAll('.select-all-rooms').forEach(selectAll => {
-                const building = selectAll.parentElement.parentElement.parentElement.parentElement.querySelector('h3').textContent.split(' ')[0];
-                const buildingCheckboxes = Array.from(document.querySelectorAll('.room-checkbox')).filter(cb => {
-                    const row = cb.closest('tr');
-                    const table = cb.closest('table');
-                    const buildingHeader = table.previousElementSibling;
-                    return buildingHeader && buildingHeader.textContent.includes(building);
-                });
+                const section = selectAll.closest('.building-section');
+                if (!section) return;
+                
+                const building = section.querySelector('h3').textContent.split(' ')[0];
+                const buildingCheckboxes = Array.from(section.querySelectorAll('.room-checkbox'));
                 const buildingChecked = buildingCheckboxes.filter(cb => cb.checked);
+                
                 selectAll.checked = buildingCheckboxes.length > 0 && buildingCheckboxes.length === buildingChecked.length;
                 selectAll.indeterminate = buildingChecked.length > 0 && buildingChecked.length < buildingCheckboxes.length;
             });
@@ -3308,13 +3307,33 @@
                 return;
             }
             
-            const idsToDelete = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+            // 获取要删除的ID，确保类型一致
+            const idsToDelete = Array.from(checkboxes).map(cb => {
+                const id = cb.dataset.id;
+                // 尝试转换为数字，如果失败则保持原样
+                const numId = Number(id);
+                return isNaN(numId) ? id : numId;
+            });
+            
+            console.log('删除前房间数:', rooms.length);
+            console.log('要删除的IDs:', idsToDelete);
+            console.log('现有房间IDs:', rooms.map(r => r.id));
+            
+            // 过滤掉要删除的房间
+            const originalLength = rooms.length;
             rooms = rooms.filter(r => !idsToDelete.includes(r.id));
             
+            console.log('删除后房间数:', rooms.length);
+            console.log('实际删除数:', originalLength - rooms.length);
+            
+            // 保存到localStorage
             localStorage.setItem('dormRooms', JSON.stringify(rooms));
+            
+            // 重新渲染
             renderRooms();
             updateRoomSelection();
-            alert(`成功删除 ${idsToDelete.length} 个房间`);
+            
+            alert(`成功删除 ${originalLength - rooms.length} 个房间`);
         }
 
         // ========== 初始化 ==========
