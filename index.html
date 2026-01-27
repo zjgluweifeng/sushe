@@ -871,7 +871,7 @@
             }
         }
 
-        function changePassword() {
+        async function changePassword() {
             if (currentUser.role !== 'admin') {
                 alert('只有管理员才能修改密码');
                 return;
@@ -895,9 +895,14 @@
             localStorage.setItem('users', JSON.stringify(savedUsers));
             
             // 自动同步到云端
-            syncToGitHub();
+            const synced = await syncToGitHub();
             
-            alert(`用户 ${username} 的密码已修改并同步到云端`);
+            if (synced) {
+                alert(`用户 ${username} 的密码已修改并同步到云端`);
+            } else {
+                alert(`用户 ${username} 的密码已修改（本地保存成功，但未同步到云端，请检查GitHub配置）`);
+            }
+            
             document.getElementById('newPassword').value = '';
         }
 
@@ -939,6 +944,56 @@
                 }
             } catch (error) {
                 alert('连接失败：' + error.message);
+            }
+        }
+
+        // 同步到GitHub的简化函数（用于密码修改等操作）
+        async function syncToGitHub() {
+            const config = JSON.parse(localStorage.getItem('githubConfig') || '{}');
+            if (!config.token || !config.gistId) {
+                console.log('GitHub未配置，跳过自动同步');
+                return false;
+            }
+            
+            try {
+                // 获取用户数据
+                const users = JSON.parse(localStorage.getItem('users') || '{}');
+                const systemInitialized = localStorage.getItem('systemInitialized') === 'true';
+                
+                const data = {
+                    records: records,
+                    rooms: rooms,
+                    users: users,
+                    systemInitialized: systemInitialized,
+                    lastSync: new Date().toISOString()
+                };
+                
+                // 更新现有Gist
+                const updateResponse = await fetch(`https://api.github.com/gists/${config.gistId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${config.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            'dormitory-data.json': {
+                                content: JSON.stringify(data, null, 2)
+                            }
+                        }
+                    })
+                });
+                
+                if (!updateResponse.ok) {
+                    throw new Error('更新Gist失败');
+                }
+                
+                console.log('✅ 密码已自动同步到云端');
+                return true;
+            } catch (error) {
+                console.error('自动同步失败:', error);
+                return false;
             }
         }
 
