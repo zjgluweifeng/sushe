@@ -1000,6 +1000,21 @@
                     adminOnlySettings.classList.add('hidden');
                 }
             }
+            
+            // 控制导出导入按钮
+            const importBtn = document.querySelector('button[onclick="showImport()"]');
+            const exportBtn = document.querySelector('button[onclick="exportExcel()"]');
+            const syncBtn = document.getElementById('syncBtn');
+            
+            if (importBtn) {
+                importBtn.style.display = isAdmin ? 'inline-block' : 'none';
+            }
+            if (exportBtn) {
+                exportBtn.style.display = isAdmin ? 'inline-block' : 'none';
+            }
+            if (syncBtn) {
+                syncBtn.style.display = isAdmin ? 'inline-block' : 'none';
+            }
         }
 
         async function changePassword() {
@@ -1129,6 +1144,10 @@
         }
 
         async function syncData() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以同步数据');
+                return;
+            }
             const config = JSON.parse(localStorage.getItem('githubConfig') || '{}');
             if (!config.token) {
                 alert('请先在系统设置中配置GitHub Token');
@@ -1402,6 +1421,11 @@
             }
             if (targetTab === 'rooms') {
                 renderRooms();
+                // 根据用户角色显示/隐藏添加房间按钮
+                const addRoomBtn = document.querySelector('#roomsTab button.btn-primary');
+                if (addRoomBtn) {
+                    addRoomBtn.style.display = currentUser.role === 'admin' ? 'inline-block' : 'none';
+                }
             }
             if (targetTab === 'floorplan') {
                 renderFloorPlan();
@@ -2438,6 +2462,10 @@
         }
 
         function exportExcel() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以导出数据');
+                return;
+            }
             const wb = XLSX.utils.book_new();
             
             // 1. 在职人员
@@ -2529,6 +2557,10 @@
         }
 
         function showImport() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以导入数据');
+                return;
+            }
             document.getElementById('importModal').classList.add('active');
         }
 
@@ -2537,6 +2569,10 @@
         }
 
         function exportCheckoutExcel() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以导出数据');
+                return;
+            }
             const checkoutRecords = records.filter(r => r.checkOutDate);
             
             if (checkoutRecords.length === 0) {
@@ -2579,6 +2615,10 @@
         }
 
         function showImportCheckout() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以导入数据');
+                return;
+            }
             document.getElementById('importCheckoutModal').classList.add('active');
         }
 
@@ -3161,6 +3201,7 @@
         // 房间管理功能
         function renderRooms() {
             const container = document.getElementById('roomsContainer');
+            const isAdmin = currentUser.role === 'admin';
             
             // 按楼栋分组
             const buildingGroups = {};
@@ -3183,16 +3224,16 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th style="width:50px;">
+                                    ${isAdmin ? `<th style="width:50px;">
                                         <div class="checkbox-wrapper">
                                             <input type="checkbox" class="select-all-rooms" onchange="toggleSelectAllRooms('${building}')">
                                         </div>
-                                    </th>
+                                    </th>` : ''}
                                     <th>序号</th>
                                     <th>房间号</th>
                                     <th>床位数</th>
                                     <th>备注</th>
-                                    <th>操作</th>
+                                    ${isAdmin ? '<th>操作</th>' : ''}
                                 </tr>
                             </thead>
                             <tbody>
@@ -3202,19 +3243,19 @@
                                     return numA - numB;
                                 }).map((room, i) => `
                                     <tr>
-                                        <td>
+                                        ${isAdmin ? `<td>
                                             <div class="checkbox-wrapper">
                                                 <input type="checkbox" class="room-checkbox" data-id="${room.id}" onchange="updateRoomSelection()">
                                             </div>
-                                        </td>
+                                        </td>` : ''}
                                         <td>${i + 1}</td>
                                         <td>${room.room}</td>
                                         <td>${room.beds}</td>
                                         <td>${room.notes || '-'}</td>
-                                        <td>
+                                        ${isAdmin ? `<td>
                                             <button class="btn btn-info" onclick="editRoom(${room.id})">编辑</button>
                                             <button class="btn btn-danger" onclick="deleteRoom(${room.id})">删除</button>
-                                        </td>
+                                        </td>` : ''}
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -3231,6 +3272,10 @@
         }
 
         function showAddRoom() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以添加房间');
+                return;
+            }
             editingRoomId = null;
             document.getElementById('roomModalTitle').textContent = '添加房间';
             document.getElementById('roomBuilding').value = '';
@@ -3241,6 +3286,10 @@
         }
 
         function editRoom(id) {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以编辑房间');
+                return;
+            }
             const room = rooms.find(r => r.id === id);
             if (!room) return;
             
@@ -3255,6 +3304,11 @@
 
         function saveRoom(e) {
             e.preventDefault();
+            
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以保存房间信息');
+                return;
+            }
             
             const data = {
                 id: editingRoomId || Date.now(),
@@ -3294,6 +3348,10 @@
         }
 
         function deleteRoom(id) {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以删除房间');
+                return;
+            }
             if (confirm('确定删除该房间配置吗?')) {
                 rooms = rooms.filter(r => r.id !== id);
                 localStorage.setItem('dormRooms', JSON.stringify(rooms));
@@ -3303,6 +3361,10 @@
         }
 
         function exportRoomsExcel() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以导出数据');
+                return;
+            }
             if (rooms.length === 0) {
                 alert('暂无房间配置数据');
                 return;
@@ -3325,6 +3387,10 @@
         }
 
         function importRoomsExcel() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以导入房间数据');
+                return;
+            }
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.xlsx,.xls';
@@ -3434,6 +3500,10 @@
         }
 
         function batchDeleteRooms() {
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以批量删除房间');
+                return;
+            }
             const checkboxes = document.querySelectorAll('.room-checkbox:checked');
             if (checkboxes.length === 0) {
                 alert('请先选择要删除的房间');
