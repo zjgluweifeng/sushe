@@ -205,6 +205,7 @@
                 <span id="syncStatusText">未同步</span>
                 <span class="sync-indicator" id="syncIndicator"></span>
                 <button class="btn btn-info" onclick="syncData()" id="syncBtn">同步数据</button>
+                <button class="btn btn-info" onclick="showImport()">📤 批量导入</button>
                 <button class="btn btn-primary" onclick="exportExcel()">📥 导出Excel</button>
                 <button class="btn btn-secondary" onclick="handleLogout()">退出</button>
             </div>
@@ -331,7 +332,6 @@
                 <select id="dormFilter" style="padding:10px;border:1px solid #ddd;border-radius:6px;min-width:200px;" onchange="filterRecords()">
                     <option value="">全部宿舍</option>
                 </select>
-                <button class="btn btn-info" onclick="showImport()">📤 批量导入</button>
                 <div class="batch-actions" id="batchActions" style="display:none;">
                     <span class="selected-count">已选择 <span id="selectedCount">0</span> 条</span>
                     <button class="btn btn-warning" onclick="batchCheckout()">🚪 批量退宿</button>
@@ -367,8 +367,6 @@
             <h2>退宿人员列表</h2>
             <div class="toolbar">
                 <input type="text" id="searchCheckout" placeholder="搜索姓名、身份证号、电话..." style="flex:1;max-width:400px;padding:10px;" oninput="filterCheckoutRecords()">
-                <button class="btn btn-primary" onclick="exportCheckoutExcel()">📥 导出退宿人员</button>
-                <button class="btn btn-info" onclick="showImportCheckout()">📤 批量导入退宿</button>
                 <div class="batch-actions" id="batchActionsCheckout" style="display:none;">
                     <span class="selected-count">已选择 <span id="selectedCountCheckout">0</span> 条</span>
                     <button class="btn btn-danger" onclick="batchDeleteCheckout()">🗑️ 批量删除</button>
@@ -407,8 +405,6 @@
             <div class="toolbar">
                 <div>
                     <button class="btn btn-primary" onclick="showAddRoom()">➕ 添加房间</button>
-                    <button class="btn btn-info" onclick="importRoomsExcel()">📤 批量导入房间</button>
-                    <button class="btn btn-warning" onclick="exportRoomsExcel()">📥 导出房间配置</button>
                 </div>
                 <div class="batch-actions" id="batchActionsRooms" style="display:none;">
                     <span class="selected-count">已选择 <span id="selectedCountRooms">0</span> 条</span>
