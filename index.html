@@ -252,8 +252,8 @@
             </div>
             
             <div class="login-form">
-                <input type="text" id="loginUsername" placeholder="用户名" />
-                <input type="password" id="loginPassword" placeholder="密码" />
+                <input type="text" id="loginUsername" placeholder="用户名" onkeypress="if(event.key==='Enter')handleLogin()" />
+                <input type="password" id="loginPassword" placeholder="密码" onkeypress="if(event.key==='Enter')handleLogin()" />
                 <button onclick="handleLogin()">登录</button>
             </div>
         </div>
@@ -641,7 +641,10 @@
         <!-- 导入模态框 -->
         <div id="importModal" class="modal">
             <div class="modal-content">
-                <h3>批量导入数据（支持多Sheet）</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">批量导入数据（支持多Sheet）</h3>
+                    <button onclick="closeImport()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #999; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='#f0f0f0'; this.style.color='#333';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#999';" title="关闭">&times;</button>
+                </div>
                 <p style="margin:15px 0;">请上传Excel文件，支持以下两种格式：</p>
                 <p style="margin:5px 0;color:#2196F3;">✅ <strong>推荐：</strong>包含3个Sheet的完整数据表格（在职人员、退宿人员、房间管理）</p>
                 <p style="margin:5px 0;color:#666;">✅ 单个Sheet的人员数据表格</p>
@@ -666,7 +669,10 @@
         <!-- 批量退宿模态框 -->
         <div id="batchCheckoutModal" class="modal">
             <div class="modal-content">
-                <h3>批量退宿</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">批量退宿</h3>
+                    <button onclick="closeBatchCheckout()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #999; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='#f0f0f0'; this.style.color='#333';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#999';" title="关闭">&times;</button>
+                </div>
                 <p style="margin:15px 0;">已选择 <strong id="batchCheckoutCount">0</strong> 人</p>
                 <div class="form-group">
                     <label>退宿原因</label>
@@ -682,7 +688,10 @@
         <!-- 添加/编辑房间模态框 -->
         <div id="roomModal" class="modal">
             <div class="modal-content">
-                <h3 id="roomModalTitle">添加房间</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 id="roomModalTitle" style="margin: 0;">添加房间</h3>
+                    <button onclick="closeRoomModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #999; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='#f0f0f0'; this.style.color='#333';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#999';" title="关闭">&times;</button>
+                </div>
                 <form onsubmit="saveRoom(event)">
                     <div class="form-group">
                         <label>楼栋 *</label>
@@ -716,7 +725,10 @@
         <!-- 房间详情模态框 -->
         <div id="roomDetailModal" class="modal room-detail-modal">
             <div class="modal-content">
-                <h3 id="roomDetailTitle">房间详情</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 id="roomDetailTitle" style="margin: 0;">房间详情</h3>
+                    <button onclick="closeRoomDetail()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #999; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='#f0f0f0'; this.style.color='#333';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#999';" title="关闭">&times;</button>
+                </div>
                 <div id="roomDetailContent"></div>
                 <div style="margin-top:20px;">
                     <button class="btn btn-secondary" onclick="closeRoomDetail()">关闭</button>
@@ -1590,17 +1602,33 @@
             const checkoutDate = new Date().toLocaleDateString();
             const count = selectedIds.size;
             
+            // 获取当前日期的YYYY-MM-DD格式（用于离职日期字段）
+            const today = new Date();
+            const resignDateFormat = today.getFullYear() + '-' + 
+                                    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                                    String(today.getDate()).padStart(2, '0');
+            
+            console.log('=== 批量退宿开始 ===');
+            console.log('退宿日期:', checkoutDate);
+            console.log('自动填充的离职日期格式:', resignDateFormat);
+            
             records = records.map(r => {
                 if (selectedIds.has(r.id)) {
-                    return {...r, checkOutDate: checkoutDate, checkOutReason: reason};
+                    // 如果没有离职日期,自动设置为今天的日期（YYYY-MM-DD格式）
+                    const resignDate = r.resignDate || resignDateFormat;
+                    console.log(`处理: ${r.name}, 原离职日期: ${r.resignDate || '无'}, 新离职日期: ${resignDate}`);
+                    return {...r, checkOutDate: checkoutDate, checkOutReason: reason, resignDate: resignDate};
                 }
                 return r;
             });
 
             localStorage.setItem('dormRecords', JSON.stringify(records));
+            console.log('=== 数据已保存到localStorage ===');
+            
             selectedIds.clear();
             updateBatchActions();
             renderTable();
+            renderCheckoutTable(); // 同时更新退宿人员表格
             closeBatchCheckout();
             alert(`批量退宿成功! 共 ${count} 人`);
         }
@@ -2141,9 +2169,27 @@
             
             const reason = prompt('请输入退宿原因:');
             if (reason) {
-                records = records.map(r => r.id === id ? {...r, checkOutDate: new Date().toLocaleDateString(), checkOutReason: reason} : r);
+                const checkoutDate = new Date().toLocaleDateString();
+                
+                // 获取当前日期的YYYY-MM-DD格式（用于离职日期字段）
+                const today = new Date();
+                const resignDateFormat = today.getFullYear() + '-' + 
+                                        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                                        String(today.getDate()).padStart(2, '0');
+                
+                records = records.map(r => {
+                    if (r.id === id) {
+                        // 如果没有离职日期，自动设置为今天的日期（YYYY-MM-DD格式）
+                        const resignDate = r.resignDate || resignDateFormat;
+                        console.log(`单个退宿: ${r.name}, 原离职日期: ${r.resignDate || '无'}, 新离职日期: ${resignDate}`);
+                        return {...r, checkOutDate: checkoutDate, checkOutReason: reason, resignDate: resignDate};
+                    }
+                    return r;
+                });
+                
                 localStorage.setItem('dormRecords', JSON.stringify(records));
                 renderTable();
+                renderCheckoutTable(); // 同时更新退宿人员表格
                 alert('退宿登记成功!');
             }
         }
